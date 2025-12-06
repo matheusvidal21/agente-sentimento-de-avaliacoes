@@ -1,44 +1,59 @@
+"""
+API de Predição de Sentimento.
+
+Módulo simplificado para inferência direta de sentimentos,
+usado pela interface Streamlit com cache de artefatos.
+"""
+
 import joblib
 import streamlit as st
+from typing import Dict, Optional, Tuple
 from .model_persistence import NB_MODEL_PATH, LR_MODEL_PATH, VECTORIZER_PATH
 
 
-# Mapeamento reverso para os rótulos de saída
 LABELS = ["Negativo", "Neutro", "Positivo"]
 
 
-@st.cache_resource  # Uso de cache do Streamlit para não carregar o modelo toda vez
-def load_artifacts(model_type="lr"):
-    """Carrega o modelo e o vetorizador na memória."""
+@st.cache_resource
+def load_artifacts(model_type: str = "lr") -> Tuple[Optional[object], Optional[object]]:
+    """
+    Carrega modelo e vetorizador com cache do Streamlit.
+    
+    Args:
+        model_type: Tipo do modelo ("nb" ou "lr")
+        
+    Returns:
+        Tupla (model, vectorizer) ou (None, None) em caso de erro
+    """
     try:
         vectorizer = joblib.load(VECTORIZER_PATH)
-
-        if model_type == "nb":
-            model = joblib.load(NB_MODEL_PATH)
-        else:  # Padrão é LR
-            model = joblib.load(LR_MODEL_PATH)
-
+        model = joblib.load(NB_MODEL_PATH if model_type == "nb" else LR_MODEL_PATH)
         return model, vectorizer
-
     except FileNotFoundError as e:
-        print(f"Erro ao carregar o artefato: {e}")
+        print(f"Erro ao carregar artefatos: {e}")
         return None, None
 
 
-def prever_sentimento(texto, model_type, limpar_texto_func):
-    """Executa a inferência para um único texto."""
+def prever_sentimento(texto: str, model_type: str, limpar_texto_func) -> Dict[str, any]:
+    """
+    Executa inferência de sentimento em um texto.
+    
+    Args:
+        texto: Texto da avaliação
+        model_type: Tipo do modelo ("nb" ou "lr")
+        limpar_texto_func: Função de limpeza de texto
+        
+    Returns:
+        Dicionário com label e probabilidades
+    """
     model, vectorizer = load_artifacts(model_type)
 
     if model is None:
         return "Erro: Modelos não carregados. Execute o pipeline de treino primeiro."
 
-    # 1. Limpeza
     texto_limpo = limpar_texto_func(texto)
-
-    # 2. Vetorização
     texto_tfidf = vectorizer.transform([texto_limpo])
 
-    # 3. Previsão
     previsao_numerica = model.predict(texto_tfidf)[0]
     probabilidades = model.predict_proba(texto_tfidf)[0]
 

@@ -1,57 +1,87 @@
+"""
+Módulo de Persistência de Modelos.
+
+Responsável por salvar modelos treinados em disco e validar
+o carregamento através de testes de inferência.
+"""
+
 import os
 import joblib
 
 
 os.makedirs('models', exist_ok=True)
+
 NB_MODEL_PATH = 'models/nb_modelo_sentimento.joblib' 
 LR_MODEL_PATH = 'models/lr_modelo_sentimento.joblib'
 VECTORIZER_PATH = 'models/vetorizador_tfidf.joblib'
 
-def testar_carregamento_modelo(model_path, vectorizer_path, limpar_texto, testes_manuais):
-    # Simula o carregamento dos arquivos e fazer uma previsão para garantir que tudo funcionou
-    print(f"\n--- Testando o modelo salvo:  {model_path}---")
 
-    # Carrega os arquivos
+def testar_carregamento_modelo(
+    model_path: str, 
+    vectorizer_path: str, 
+    limpar_texto, 
+    testes_manuais: list, 
+    is_kmeans: bool = False
+) -> None:
+    """
+    Valida modelos salvos realizando inferências de teste.
+    
+    Args:
+        model_path: Caminho do arquivo .joblib do modelo
+        vectorizer_path: Caminho do vetorizador TF-IDF
+        limpar_texto: Função de limpeza de texto
+        testes_manuais: Lista de textos para teste
+        is_kmeans: Se True, trata como modelo de clustering
+    """
+    print(f"\n--- Testando modelo: {model_path} ---")
+
     loaded_model = joblib.load(model_path)
     loaded_vectorizer = joblib.load(vectorizer_path)
 
-    # Mapeamento dos rótulos 
     labels = ['Negativo', 'Neutro', 'Positivo']
 
-    # 1. Limpa os textos (usando a mesma função 'limpar_texto' do Passo 2)
     testes_limpos = [limpar_texto(texto) for texto in testes_manuais]
-
-    # 2. Vetoriza os textos limpos (usando o vetorizador carregado)
     testes_tfidf = loaded_vectorizer.transform(testes_limpos)
-
-    # 3. Faz a previsão (usando o modelo carregado)
     previsoes = loaded_model.predict(testes_tfidf)
 
-    # 4. Mostra os resultados
-    print("Resultados das previsões manuais:")
+    print(f"Resultados das previsões {'(Cluster)' if is_kmeans else '(Sentimento)'}:")
     for texto, previsao_numerica in zip(testes_manuais, previsoes):
-        print(f"Texto: '{texto}'  ->  Previsto: {labels[previsao_numerica]}")
+        if is_kmeans:
+            print(f"'{texto}' → Cluster: {previsao_numerica}")
+        else:
+            print(f"'{texto}' → {labels[previsao_numerica]}")
         
         
-def persistir_modelos(nb_model, lr_model, vectorizer, limpar_texto, testes_manuais):
+def persistir_modelos(
+    nb_model, 
+    lr_model, 
+    kmeans_model, 
+    vectorizer, 
+    limpar_texto, 
+    testes_manuais: list
+) -> None:
     """
-    Salva o modelo treinado e o vetorizador TF-IDF
-    em arquivos, e testa o carregamento dos mesmos.
-    """
-    # --- 1. Salvar os modelos ---
+    Serializa modelos treinados e executa testes de validação.
     
-    # Salva o modelo de Naive Bayes
+    Salva todos os artefatos em formato .joblib e verifica a integridade
+    através de predições em textos de exemplo.
+    
+    Args:
+        nb_model: Modelo Naive Bayes treinado
+        lr_model: Modelo Regressão Logística treinado
+        kmeans_model: Modelo K-Means treinado
+        vectorizer: Vetorizador TF-IDF treinado
+        limpar_texto: Função de limpeza de texto
+        testes_manuais: Lista de textos para validação
+    """
     joblib.dump(nb_model, NB_MODEL_PATH)
-    print(f"Modelo de Naive Bayes salvo como '{NB_MODEL_PATH}'")
+    print(f"Naive Bayes salvo: '{NB_MODEL_PATH}'")
     
-    # Salva o modelo de Regressão Logística
     joblib.dump(lr_model, LR_MODEL_PATH)
-    print(f"Modelo de Regressão Logística salvo como '{LR_MODEL_PATH}'")
+    print(f"Regressão Logística salva: '{LR_MODEL_PATH}'")
     
-    # Salva o Vetorizador TF-IDF
     joblib.dump(vectorizer, VECTORIZER_PATH)
-    print(f"Vetorizador TF-IDF salvo como '{VECTORIZER_PATH}'")
+    print(f"Vetorizador TF-IDF salvo: '{VECTORIZER_PATH}'")
 
-    # --- 2. Teste de Carregamento ---
     testar_carregamento_modelo(LR_MODEL_PATH, VECTORIZER_PATH, limpar_texto, testes_manuais)
     testar_carregamento_modelo(NB_MODEL_PATH, VECTORIZER_PATH, limpar_texto, testes_manuais)
