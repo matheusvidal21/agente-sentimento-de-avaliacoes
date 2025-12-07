@@ -1,9 +1,8 @@
 """
 Módulo de Treinamento de Modelos.
 
-Responsável por treinar os modelos de classificação (Naive Bayes, 
-Regressão Logística) e clustering (K-Means), além de gerar métricas
-e visualizações de desempenho.
+Responsável por treinar os modelos de classificação (Naive Bayes
+e Regressão Logística) e gerar métricas e visualizações de desempenho.
 """
 
 import os
@@ -13,7 +12,6 @@ import matplotlib.pyplot as plt
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix, precision_score, recall_score
-from sklearn.cluster import KMeans
 
 
 os.makedirs('docs', exist_ok=True)
@@ -23,9 +21,8 @@ def treinar_modelos(X_train_tfidf, X_test_tfidf, y_train, y_test) -> tuple:
     """
     Treina modelos de ML e gera visualizações de performance.
     
-    Treina 3 modelos: Naive Bayes e Regressão Logística (supervisionados)
-    para classificação de sentimento, e K-Means (não-supervisionado) para
-    perfilamento de clientes.
+    Treina 2 modelos supervisionados: Naive Bayes e Regressão Logística
+    para classificação de sentimento.
     
     Args:
         X_train_tfidf: Matriz TF-IDF de treino
@@ -34,7 +31,7 @@ def treinar_modelos(X_train_tfidf, X_test_tfidf, y_train, y_test) -> tuple:
         y_test: Labels de teste
         
     Returns:
-        Tupla (nb_model, lr_model, kmeans_model)
+        Tupla (nb_model, lr_model)
     """
     labels = ['Negativo', 'Neutro', 'Positivo']
 
@@ -91,17 +88,11 @@ def treinar_modelos(X_train_tfidf, X_test_tfidf, y_train, y_test) -> tuple:
     confusion_matrix_path = f'docs/confusion_matrices_{timestamp}.png'
     plt.savefig(confusion_matrix_path, dpi=300, bbox_inches='tight')
     print(f"Matrizes de confusão salvas em: {confusion_matrix_path}")
-    plt.show()
-    
-    # K-Means para Perfilamento
-    print("\n--- 3. Treinando K-Means (Perfilamento) ---")
-    kmeans_model = KMeans(n_clusters=4, random_state=42, n_init=10)
-    kmeans_model.fit(X_train_tfidf)
-    print("Modelo K-Means treinado com 4 clusters.")
+    plt.close()
     
     # Gerar relatório de treinamento
     _gerar_relatorio_treinamento(
-        nb_model, lr_model, kmeans_model,
+        nb_model, lr_model,
         y_test, y_pred_nb, y_pred_lr,
         accuracy_nb, accuracy_lr,
         f1_nb, f1_lr,
@@ -113,11 +104,11 @@ def treinar_modelos(X_train_tfidf, X_test_tfidf, y_train, y_test) -> tuple:
         timestamp
     )
     
-    return nb_model, lr_model, kmeans_model
+    return nb_model, lr_model
 
 
 def _gerar_relatorio_treinamento(
-    nb_model, lr_model, kmeans_model,
+    nb_model, lr_model,
     y_test, y_pred_nb, y_pred_lr,
     accuracy_nb, accuracy_lr,
     f1_nb, f1_lr,
@@ -162,7 +153,6 @@ Este relatório documenta o processo de treinamento dos modelos de Machine Learn
 ### Modelos Treinados
 1. **Naive Bayes (MultinomialNB)** - Classificação de Sentimento
 2. **Regressão Logística** - Classificação de Sentimento
-3. **K-Means** - Perfilamento de Clientes (4 clusters)
 
 ---
 
@@ -282,27 +272,6 @@ As matrizes de confusão acima mostram a comparação visual entre os dois model
 
 ---
 
-## Modelo 3: K-Means (Perfilamento)
-
-### Configuração
-- **Número de Clusters:** 4
-- **Algoritmo:** K-Means
-- **Inicialização:** k-means++
-- **Random State:** 42
-- **Número de Inicializações:** 10
-
-### Propósito
-O modelo K-Means é utilizado pelo **ProfilingAgent** para categorizar avaliações em perfis semânticos:
-- Logística e Entrega
-- Custo Benefício
-- Qualidade e Defeitos
-- Satisfação e Experiência
-
-### Integração com Sistema Multi-Agente
-O clustering permite que o sistema identifique automaticamente o tipo de problema/elogio mencionado pelo cliente, facilitando a tomada de decisão sobre ações táticas.
-
----
-
 ## Arquitetura do Sistema Multi-Agente
 
 ### Agentes Especializados
@@ -312,13 +281,13 @@ O clustering permite que o sistema identifique automaticamente o tipo de problem
 - **Modelos:** Naive Bayes e Regressão Logística
 - **Features:** Explica contribuição de cada palavra para a predição
 
-#### 2. KeywordAgent
+#### 2. ValidationAgent
+- **Função:** Quantificação de incerteza e arbitragem entre modelos
+- **Propósito:** Validar predições e escolher o melhor modelo para cada caso
+
+#### 3. KeywordAgent
 - **Função:** Extração de palavras-chave via TF-IDF
 - **Propósito:** Identificar termos mais relevantes da avaliação
-
-#### 3. ProfilingAgent
-- **Função:** Categorização semântica via K-Means
-- **Propósito:** Identificar o perfil do cliente e tipo de problema
 
 #### 4. ActionAgent
 - **Função:** Definição de ações táticas baseadas em regras
@@ -337,11 +306,11 @@ O clustering permite que o sistema identifique automaticamente o tipo de problem
 ```
 Texto do Cliente
     ↓
-[SentimentAgent] → Classifica sentimento
+[SentimentAgent] → Classifica sentimento (NB + LR)
+    ↓
+[ValidationAgent] → Valida e escolhe melhor modelo
     ↓
 [KeywordAgent] → Extrai termos-chave
-    ↓
-[ProfilingAgent] → Identifica categoria
     ↓
 [ActionAgent] → Define ação tática
     ↓
@@ -390,7 +359,6 @@ A Regressão Logística permite explicar predições através dos coeficientes, 
 |---------|-----------|
 | `models/nb_modelo_sentimento.joblib` | Modelo Naive Bayes serializado |
 | `models/lr_modelo_sentimento.joblib` | Modelo Regressão Logística serializado |
-| `models/kmeans_perfil.joblib` | Modelo K-Means serializado |
 | `models/vetorizador_tfidf.joblib` | Vetorizador TF-IDF treinado |
 | `docs/{os.path.basename(confusion_matrix_path)}` | Matrizes de confusão (PNG) |
 | `docs/{os.path.basename(report_path)}` | Este relatório |
@@ -402,7 +370,6 @@ A Regressão Logística permite explicar predições através dos coeficientes, 
 1. **Scikit-learn:** Pedregosa et al., *Scikit-learn: Machine Learning in Python*, JMLR 12, pp. 2825-2830, 2011.
 2. **Naive Bayes:** McCallum, A., & Nigam, K. (1998). *A comparison of event models for naive bayes text classification.*
 3. **TF-IDF:** Salton, G., & Buckley, C. (1988). *Term-weighting approaches in automatic text retrieval.*
-4. **K-Means:** Lloyd, S. (1982). *Least squares quantization in PCM.*
 
 ---
 

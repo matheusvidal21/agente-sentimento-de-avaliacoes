@@ -20,8 +20,7 @@ def testar_carregamento_modelo(
     model_path: str, 
     vectorizer_path: str, 
     limpar_texto, 
-    testes_manuais: list, 
-    is_kmeans: bool = False
+    testes_manuais: list
 ) -> None:
     """
     Valida modelos salvos realizando inferências de teste.
@@ -31,7 +30,6 @@ def testar_carregamento_modelo(
         vectorizer_path: Caminho do vetorizador TF-IDF
         limpar_texto: Função de limpeza de texto
         testes_manuais: Lista de textos para teste
-        is_kmeans: Se True, trata como modelo de clustering
     """
     print(f"\n--- Testando modelo: {model_path} ---")
 
@@ -44,18 +42,14 @@ def testar_carregamento_modelo(
     testes_tfidf = loaded_vectorizer.transform(testes_limpos)
     previsoes = loaded_model.predict(testes_tfidf)
 
-    print(f"Resultados das previsões {'(Cluster)' if is_kmeans else '(Sentimento)'}:")
+    print(f"Resultados das previsões (Sentimento):")
     for texto, previsao_numerica in zip(testes_manuais, previsoes):
-        if is_kmeans:
-            print(f"'{texto}' → Cluster: {previsao_numerica}")
-        else:
-            print(f"'{texto}' → {labels[previsao_numerica]}")
+        print(f"'{texto}' → {labels[previsao_numerica]}")
         
         
 def persistir_modelos(
     nb_model, 
     lr_model, 
-    kmeans_model, 
     vectorizer, 
     limpar_texto, 
     testes_manuais: list
@@ -69,7 +63,6 @@ def persistir_modelos(
     Args:
         nb_model: Modelo Naive Bayes treinado
         lr_model: Modelo Regressão Logística treinado
-        kmeans_model: Modelo K-Means treinado
         vectorizer: Vetorizador TF-IDF treinado
         limpar_texto: Função de limpeza de texto
         testes_manuais: Lista de textos para validação

@@ -3,7 +3,7 @@ Pipeline completo de treinamento dos modelos de análise de sentimento.
 
 Este módulo implementa o fluxo de treinamento em 3 etapas:
 1. Pré-processamento: Limpeza de texto, vetorização TF-IDF
-2. Treinamento: Naive Bayes, Regressão Logística, K-Means
+2. Treinamento: Naive Bayes e Regressão Logística
 3. Persistência: Salvamento dos modelos e validação
 
 O pipeline utiliza o dataset com 869 avaliações de produtos,
@@ -23,7 +23,7 @@ def main():
     
     Fluxo de execução:
     1. Carrega e pré-processa o dataset (limpeza, TF-IDF, split)
-    2. Treina 3 modelos: NB (sentimento), LR (sentimento), K-Means (perfis)
+    2. Treina 2 modelos: NB (sentimento) e LR (sentimento)
     3. Salva modelos em disco e executa testes de validação
     """
     
@@ -33,7 +33,7 @@ def main():
 
     # Etapa 2: Treinamento dos modelos
     print("\n--- [ETAPA 2/3] Iniciando Treinamento dos Modelos ---")
-    nb_model, lr_model, kmeans_model = treinar_modelos(X_train, X_test, y_train, y_test)
+    nb_model, lr_model = treinar_modelos(X_train, X_test, y_train, y_test)
 
     # Etapa 3: Persistência e validação
     print("\n--- [ETAPA 3/3] Iniciando Persistência e Teste ---")
@@ -43,7 +43,7 @@ def main():
         "Fantástico! Superou minhas expectativas, recomendo demais.",
         "Péssimo atendimento ao cliente, nunca mais compro aqui."
     ]
-    persistir_modelos(nb_model, lr_model, kmeans_model, vectorizer, limpar_texto, testes_manuais)
+    persistir_modelos(nb_model, lr_model, vectorizer, limpar_texto, testes_manuais)
     
     print("\n--- Pipeline Concluído com Sucesso! ---")
 

@@ -1,227 +1,121 @@
-# Análise de Sentimentos sob Incerteza
+# Sistema Multi-Agente para Análise de Sentimentos
 
 **Disciplina:** Introdução à Inteligência Artificial  
 **Semestre:** 2025.2  
-**Professor:** Andre Luis Fonseca Faustino
+**Professor:** Andre Luis Fonseca Faustino  
 **Turma:** T03
 
 ## Integrantes do Grupo
-
-- Isabela Gomes Mendes (20220038147)
-- Matheus Costa Vidal (20220055246)
+* Isabela Gomes Mendes (20220038147)
+* Matheus Costa Vidal (20220055246)
 
 ## Descrição do Projeto
 
-Este projeto implementa um sistema de **análise automática de sentimentos** em avaliações de produtos escritas em português brasileiro. O sistema atua como um **agente probabilístico** que utiliza técnicas de Processamento de Linguagem Natural (PLN) e aprendizado supervisionado (Naive Bayes e Regressão Logística) para inferir o sentimento de uma avaliação como **positivo**, **neutro** ou **negativo**.
+Este projeto implementa um sistema multi-agente de análise automática de sentimentos em avaliações de produtos escritas em português brasileiro. O sistema é baseado na arquitetura PEAS (Performance, Environment, Actuators, Sensors) de agentes inteligentes, conforme descrita por Russell & Norvig (2020).
 
-A abordagem modela o problema como inferência em ambientes com incerteza, onde o sentimento é um estado não observável que deve ser deduzido a partir de evidências textuais. O sistema inclui uma interface web interativa que permite ao usuário testar avaliações e visualizar não apenas a classificação, mas também as métricas de decisão do agente, como confiança e probabilidades por classe.
+O sistema utiliza técnicas de Processamento de Linguagem Natural (PLN) e aprendizado supervisionado (Naive Bayes e Regressão Logística) com representação TF-IDF para classificar sentimentos como positivo, neutro ou negativo. A arquitetura modular é composta por seis agentes especializados: SentimentAgent (classificação), ValidationAgent (quantificação de incerteza), KeywordAgent (extração de termos), ActionAgent (decisão tática), ResponseAgent (geração de resposta via LLM Gemini) e ManagerAgent (orquestração). As tecnologias utilizadas incluem Python, scikit-learn, NLTK, Streamlit e Google Generative AI.
 
 ## Guia de Instalação e Execução
 
-Siga os passos abaixo para configurar e executar o ambiente do projeto do zero.
+### 1. Instalação das Dependências
 
-### 1. Pré-requisitos
-
-- **Python 3.8+** instalado no sistema
-- **Git** para clonar o repositório
-
-### 2. Instalação e Configuração do Ambiente
-
-Clone o repositório e configure o ambiente virtual:
+Certifique-se de ter o **Python 3.8+** instalado. Clone o repositório e instale as bibliotecas listadas no `requirements.txt`:
 
 ```bash
-# Clone o repositório
 git clone https://github.com/matheusvidal21/agente-sentimento-de-avaliacoes.git
 
-# Entre na pasta do projeto
 cd agente-sentimento-de-avaliacoes
 
-# Crie um ambiente virtual (Recomendado)
 python -m venv .venv
 
-# Ative o ambiente virtual
-source .venv/bin/activate  # Linux/macOS
-# ou .venv\Scripts\activate # Windows
+source .venv/bin/activate
 
-# Instale as dependências
 pip install -r requirements.txt
+```
+
+### 2. Configuração da API do Gemini (Opcional)
+
+Para habilitar a geração de respostas automáticas via LLM, crie um arquivo `.env` na raiz do projeto:
+
+```bash
+GEMINI_API_KEY=sua_chave_api_aqui
 ```
 
 ### 3. Treinamento dos Modelos
 
-Antes de executar a aplicação, é necessário treinar os modelos. O projeto já inclui um dataset pronto em `dataset/avaliacoes.csv` com 869 avaliações rotuladas.
-
-Execute o script de treinamento:
+Antes de executar a aplicação, treine os modelos com o dataset incluído:
 
 ```bash
-python treinar.py
+python train.py
 ```
 
-Este comando irá:
-1. **Pré-processar** o dataset (limpeza de texto, vetorização TF-IDF)
-2. **Treinar** 3 modelos de machine learning:
-   - Naive Bayes (classificação de sentimento)
-   - Regressão Logística (classificação de sentimento)
-   - K-Means (agrupamento de perfis de usuários)
-3. **Salvar** os modelos treinados na pasta `models/`:
-   - `nb_modelo_sentimento.joblib`
-   - `lr_modelo_sentimento.joblib`
-   - `kmeans_perfil.joblib`
-   - `vetorizador_tfidf.joblib`
-4. **Validar** os modelos com testes manuais
-5. **Gerar relatório completo** em `docs/`:
-   - `relatorio_treinamento_[timestamp].md` - Métricas detalhadas, matrizes de confusão, análise dos modelos e arquitetura do sistema
-   - `confusion_matrices_[timestamp].png` - Visualizações das matrizes de confusão
+Este comando irá processar o dataset em `dataset/avaliacoes.csv`, treinar os modelos (Naive Bayes e Regressão Logística), e salvá-los na pasta `models/`. Um relatório completo de treinamento será gerado em `docs/`.
 
-> **Relatório de Treinamento**: Após executar `python treinar.py`, um relatório completo em Markdown será gerado automaticamente na pasta `docs/`, contendo todas as métricas, análises e informações relevantes sobre os modelos treinados.
+### 4. Como Executar
 
-### 4. Execução da Aplicação Web
-
-Após o treinamento dos modelos, execute a interface web:
+Execute o comando abaixo no terminal para iniciar o servidor local:
 
 ```bash
 streamlit run app.py
 ```
 
-A aplicação estará disponível no seu navegador em: **http://localhost:8501**
+A aplicação estará disponível em http://localhost:8501
 
-## Fluxo de Arquivos e Estrutura do Projeto
-
-### Estrutura de Diretórios
+## Estrutura dos Arquivos
 
 ```
 agente-sentimento-de-avaliacoes/
-├── app.py                          # Interface web (Streamlit)
-├── treinar.py                      # Script de treinamento dos modelos
+├── app.py                          # Interface web Streamlit
+├── train.py                        # Script de treinamento
 ├── requirements.txt                # Dependências do projeto
 ├── README.md                       # Documentação
 ├── dataset/
 │   └── avaliacoes.csv             # Dataset com 869 avaliações rotuladas
-├── models/                         # Modelos treinados (gerados após treinar.py)
+├── models/                         # Modelos treinados (gerados após train.py)
 │   ├── nb_modelo_sentimento.joblib
 │   ├── lr_modelo_sentimento.joblib
-│   ├── kmeans_perfil.joblib
 │   └── vetorizador_tfidf.joblib
-├── src/                            # Módulos do sistema
-│   ├── __init__.py
+├── src/                            # Código-fonte dos módulos
 │   ├── pipeline.py                # Orquestração do pipeline de treinamento
 │   ├── data_preprocessing.py      # Pré-processamento e vetorização
-│   ├── model_training.py          # Treinamento e avaliação dos modelos
-│   ├── model_persistence.py       # Salvamento e validação dos modelos
+│   ├── model_training.py          # Treinamento e avaliação
+│   ├── model_persistence.py       # Salvamento dos modelos
 │   ├── prediction_api.py          # API de inferência
-│   └── agents/                    # Sistema multi-agente (arquitetura modular)
-│       ├── __init__.py
+│   └── agents/                    # Sistema multi-agente
+│       ├── base_agent.py          # Classe base e protocolo PEAS
+│       ├── manager_agent.py       # Orquestrador central
 │       ├── sentiment_agent.py     # Classificação de sentimento
+│       ├── validation_agent.py    # Quantificação de incerteza
 │       ├── keyword_agent.py       # Extração de palavras-chave
-│       ├── profiling_agent.py     # Perfilamento de clientes
-│       ├── action_agent.py        # Definição de ações táticas
-│       ├── response_agent.py      # Geração de respostas (LLM)
-│       └── manager_agent.py       # Orquestrador do sistema
-└── docs/                           # Imagens e documentação auxiliar
+│       ├── action_agent.py        # Decisão tática
+│       └── response_agent.py      # Geração de resposta via LLM
+└── docs/                           # Documentação e relatórios
+    └── ARQUITETURA_AGENTES_PEAS.md # Especificação detalhada
 ```
-
-### Fluxo de Execução
-
-#### 📊 Fluxo de Treinamento (`treinar.py`)
-
-```
-treinar.py
-    ↓
-pipeline.py → main()
-    ↓
-    ├─→ 1. data_preprocessing.py → processar_dados()
-    │      • Carrega dataset/avaliacoes.csv
-    │      • Limpa texto (remove acentos, caracteres especiais)
-    │      • Vetoriza com TF-IDF
-    │      • Divide em treino/teste (75%/25%)
-    │      ↓ retorna: X_train, X_test, y_train, y_test, vectorizer
-    │
-    ├─→ 2. model_training.py → treinar_modelos()
-    │      • Treina Naive Bayes e Regressão Logística
-    │      • Treina K-Means (4 clusters)
-    │      • Exibe métricas (acurácia, F1, matriz de confusão)
-    │      ↓ retorna: nb_model, lr_model, kmeans_model
-    │
-    └─→ 3. model_persistence.py → persistir_modelos()
-           • Salva modelos em models/*.joblib
-           • Valida modelos com testes manuais
-```
-
-#### 🌐 Fluxo da Aplicação Web (`app.py`)
-
-```
-app.py (Streamlit)
-    ↓
-agents/manager_agent.py → ManagerAgent
-    ↓
-    ├─→ SentimentAgent (sentiment_agent.py)
-    │      • Carrega modelos de models/
-    │      • Classifica sentimento (positivo/neutro/negativo)
-    │      • Calcula probabilidades e explica predições
-    │
-    ├─→ KeywordAgent (keyword_agent.py)
-    │      • Extrai termos mais relevantes via TF-IDF
-    │
-    ├─→ ProfilingAgent (profiling_agent.py)
-    │      • Identifica categoria via K-Means
-    │      • Mapeia para perfis semânticos
-    │
-    ├─→ ActionAgent (action_agent.py)
-    │      • Define ações baseadas em regras de negócio
-    │
-    └─→ ResponseAgent (response_agent.py)
-           • Gera resposta personalizada via Gemini API
-```
-
-### Módulos Principais
-
-| Módulo | Responsabilidade |
-|--------|-----------------|
-| **pipeline.py** | Orquestra o fluxo completo de treinamento |
-| **data_preprocessing.py** | Limpeza de texto, vetorização TF-IDF, split de dados |
-| **model_training.py** | Treinamento dos modelos (NB, LR, K-Means) e geração de métricas |
-| **model_persistence.py** | Salvamento dos modelos e testes de validação |
-| **prediction_api.py** | API de inferência carregando modelos persistidos |
-| **agents/sentiment_agent.py** | Classificação de sentimento e explicabilidade |
-| **agents/keyword_agent.py** | Extração de palavras-chave via TF-IDF |
-| **agents/profiling_agent.py** | Perfilamento e categorização de clientes |
-| **agents/action_agent.py** | Regras de negócio para ações táticas |
-| **agents/response_agent.py** | Geração de respostas via LLM (Gemini) |
-| **agents/manager_agent.py** | Orquestrador central do sistema multi-agente |
-| **app.py** | Interface web interativa com Streamlit |
 
 ## Resultados e Demonstração
 
-O sistema apresenta uma acurácia média de **~85%** (Naive Bayes) e **~86%** (Regressão Logística) no conjunto de teste.
+O sistema apresenta as seguintes métricas de desempenho:
 
-Na interface de demonstração, o agente exibe:
+- **Naive Bayes**: Acurácia de 93.58% e F1-Score de 93.47%
+- **Regressão Logística**: Acurácia de 90.37% e F1-Score de 90.11%
 
-1.  **Classificação do Sentimento**: Positivo, Neutro ou Negativo.
-2.  **Métricas de Decisão**:
-    - **Tempo de Execução**: Custo temporal da inferência.
-    - **Confiança**: Grau de certeza na decisão tomada.
-    - **Probabilidades Detalhadas**: Visualização da distribuição de probabilidade entre as classes possíveis.
+A interface web permite testar avaliações e visualizar:
+- Classificação do sentimento (Positivo/Neutro/Negativo)
+- Comparação entre modelos NB e LR com arbitragem inteligente
+- Métricas de incerteza (confiança, entropia, spread)
+- Palavras-chave mais relevantes com heatmap visual
+- Ação recomendada baseada em regras de negócio
+- Resposta automática personalizada via LLM Gemini
 
-<video width="100%" controls>
-  <source src="docs/demo.mp4" type="video/mp4">
-  Seu navegador não suporta a tag de vídeo.
-</video>
+![Interface do Sistema](docs/interface_sistema.png)
 
-### Métricas de Treinamento
-
-Abaixo, as matrizes de confusão e métricas obtidas durante o treinamento dos modelos:
-
-**Naive Bayes:**
-
-![Treinamento Naive Bayes](docs/treinamento_naive_bayes.png)
-
-**Regressão Logística:**
-
-![Treinamento Regressão Logística](docs/treinamento_regressao_logistica.png)
+As matrizes de confusão e relatórios detalhados de treinamento são gerados automaticamente na pasta `docs/` após executar `python train.py`.
 
 ## Referências
 
-- **Scikit-learn**: Pedregosa et al., Scikit-learn: Machine Learning in Python, JMLR 12, pp. 2825-2830, 2011.
-- **Streamlit**: Framework para criação de web apps de dados.
-- **Google Generative AI**: Utilizado para geração de dados sintéticos para treinamento.
-- **Naive Bayes & Logistic Regression**: Russell, S. & Norvig, P. (2010). _Artificial Intelligence: A Modern Approach_.
+* Russell, S. & Norvig, P. (2020). *Artificial Intelligence: A Modern Approach* (4th ed.). Pearson.
+* Wooldridge, M. (2009). *An Introduction to MultiAgent Systems* (2nd ed.). Wiley.
+* Pedregosa et al. (2011). Scikit-learn: Machine Learning in Python. JMLR 12, pp. 2825-2830.
+* Dataset: Avaliações de produtos em português brasileiro (869 amostras rotuladas)
+* Google Generative AI - Gemini 2.0 Flash API

@@ -1,23 +1,22 @@
 # Relatório de Treinamento - Sistema de Análise de Sentimentos
 
-**Data de Treinamento:** 06/12/2025 14:49:42  
+**Data de Treinamento:** 06/12/2025 20:56:33  
 **Disciplina:** Introdução à Inteligência Artificial  
 **Semestre:** 2025.2
 
 ---
 
-## 📊 Sumário Executivo
+## Sumário Executivo
 
 Este relatório documenta o processo de treinamento dos modelos de Machine Learning utilizados no Sistema Multi-Agente para Análise de Sentimentos. O sistema implementa uma arquitetura baseada em agentes especializados que trabalham em conjunto para classificar sentimentos e gerar respostas automáticas.
 
 ### Modelos Treinados
 1. **Naive Bayes (MultinomialNB)** - Classificação de Sentimento
 2. **Regressão Logística** - Classificação de Sentimento
-3. **K-Means** - Perfilamento de Clientes (4 clusters)
 
 ---
 
-## 🎯 Dataset
+## Dataset
 
 ### Características
 - **Total de Amostras:** 869
@@ -45,7 +44,7 @@ Este relatório documenta o processo de treinamento dos modelos de Machine Learn
 
 ---
 
-## 🤖 Modelo 1: Naive Bayes (MultinomialNB)
+## Modelo 1: Naive Bayes (MultinomialNB)
 
 ### Hiperparâmetros
 - **Algoritmo:** Multinomial Naive Bayes
@@ -93,7 +92,7 @@ Verdadeiro
 
 ---
 
-## 📈 Modelo 2: Regressão Logística
+## Modelo 2: Regressão Logística
 
 ### Hiperparâmetros
 - **Solver:** lbfgs
@@ -143,36 +142,15 @@ Verdadeiro
 
 ---
 
-## 🎨 Visualizações
+## Visualizações
 
-![Matrizes de Confusão](confusion_matrices_20251206_144936.png)
+![Matrizes de Confusão](confusion_matrices_20251206_205633.png)
 
 As matrizes de confusão acima mostram a comparação visual entre os dois modelos de classificação. Células na diagonal representam predições corretas.
 
 ---
 
-## 🔍 Modelo 3: K-Means (Perfilamento)
-
-### Configuração
-- **Número de Clusters:** 4
-- **Algoritmo:** K-Means
-- **Inicialização:** k-means++
-- **Random State:** 42
-- **Número de Inicializações:** 10
-
-### Propósito
-O modelo K-Means é utilizado pelo **ProfilingAgent** para categorizar avaliações em perfis semânticos:
-- Logística e Entrega
-- Custo Benefício
-- Qualidade e Defeitos
-- Satisfação e Experiência
-
-### Integração com Sistema Multi-Agente
-O clustering permite que o sistema identifique automaticamente o tipo de problema/elogio mencionado pelo cliente, facilitando a tomada de decisão sobre ações táticas.
-
----
-
-## 🏗️ Arquitetura do Sistema Multi-Agente
+## Arquitetura do Sistema Multi-Agente
 
 ### Agentes Especializados
 
@@ -181,13 +159,13 @@ O clustering permite que o sistema identifique automaticamente o tipo de problem
 - **Modelos:** Naive Bayes e Regressão Logística
 - **Features:** Explica contribuição de cada palavra para a predição
 
-#### 2. KeywordAgent
+#### 2. ValidationAgent
+- **Função:** Quantificação de incerteza e arbitragem entre modelos
+- **Propósito:** Validar predições e escolher o melhor modelo para cada caso
+
+#### 3. KeywordAgent
 - **Função:** Extração de palavras-chave via TF-IDF
 - **Propósito:** Identificar termos mais relevantes da avaliação
-
-#### 3. ProfilingAgent
-- **Função:** Categorização semântica via K-Means
-- **Propósito:** Identificar o perfil do cliente e tipo de problema
 
 #### 4. ActionAgent
 - **Função:** Definição de ações táticas baseadas em regras
@@ -206,11 +184,11 @@ O clustering permite que o sistema identifique automaticamente o tipo de problem
 ```
 Texto do Cliente
     ↓
-[SentimentAgent] → Classifica sentimento
+[SentimentAgent] → Classifica sentimento (NB + LR)
+    ↓
+[ValidationAgent] → Valida e escolhe melhor modelo
     ↓
 [KeywordAgent] → Extrai termos-chave
-    ↓
-[ProfilingAgent] → Identifica categoria
     ↓
 [ActionAgent] → Define ação tática
     ↓
@@ -221,7 +199,7 @@ Resultado Consolidado
 
 ---
 
-## 📊 Comparação de Modelos
+## Comparação de Modelos
 
 | Métrica | Naive Bayes | Regressão Logística | Melhor |
 |---------|-------------|---------------------|--------|
@@ -235,7 +213,7 @@ Resultado Consolidado
 
 ---
 
-## 🎓 Considerações Técnicas
+## Considerações Técnicas
 
 ### Pré-processamento
 1. **Limpeza:** Remoção de acentos, caracteres especiais, normalização
@@ -253,25 +231,23 @@ A Regressão Logística permite explicar predições através dos coeficientes, 
 
 ---
 
-## 📁 Artefatos Gerados
+## Artefatos Gerados
 
 | Arquivo | Descrição |
 |---------|-----------|
 | `models/nb_modelo_sentimento.joblib` | Modelo Naive Bayes serializado |
 | `models/lr_modelo_sentimento.joblib` | Modelo Regressão Logística serializado |
-| `models/kmeans_perfil.joblib` | Modelo K-Means serializado |
 | `models/vetorizador_tfidf.joblib` | Vetorizador TF-IDF treinado |
-| `docs/confusion_matrices_20251206_144936.png` | Matrizes de confusão (PNG) |
-| `docs/relatorio_treinamento_20251206_144936.md` | Este relatório |
+| `docs/confusion_matrices_20251206_205633.png` | Matrizes de confusão (PNG) |
+| `docs/relatorio_treinamento_20251206_205633.md` | Este relatório |
 
 ---
 
-## 🔗 Referências
+## Referências
 
 1. **Scikit-learn:** Pedregosa et al., *Scikit-learn: Machine Learning in Python*, JMLR 12, pp. 2825-2830, 2011.
 2. **Naive Bayes:** McCallum, A., & Nigam, K. (1998). *A comparison of event models for naive bayes text classification.*
 3. **TF-IDF:** Salton, G., & Buckley, C. (1988). *Term-weighting approaches in automatic text retrieval.*
-4. **K-Means:** Lloyd, S. (1982). *Least squares quantization in PCM.*
 
 ---
 
