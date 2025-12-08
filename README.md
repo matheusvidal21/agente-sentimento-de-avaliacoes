@@ -13,7 +13,7 @@
 
 Este projeto implementa um sistema multi-agente de análise automática de sentimentos em avaliações de produtos escritas em português brasileiro. O sistema é baseado na arquitetura PEAS (Performance, Environment, Actuators, Sensors) de agentes inteligentes, conforme descrita por Russell & Norvig (2020).
 
-O sistema utiliza técnicas de Processamento de Linguagem Natural (PLN) e aprendizado supervisionado (Naive Bayes e Regressão Logística) com representação TF-IDF para classificar sentimentos como positivo, neutro ou negativo. A arquitetura modular é composta por seis agentes especializados: SentimentAgent (classificação), ValidationAgent (quantificação de incerteza), KeywordAgent (extração de termos), ActionAgent (decisão tática), ResponseAgent (geração de resposta via LLM Gemini) e ManagerAgent (orquestração). As tecnologias utilizadas incluem Python, scikit-learn, NLTK, Streamlit e Google Generative AI.
+O sistema utiliza técnicas de Processamento de Linguagem Natural (PLN) e aprendizado supervisionado (Naive Bayes e Regressão Logística) com representação TF-IDF para classificar sentimentos como positivo, neutro ou negativo. A arquitetura modular é composta por seis agentes especializados: SentimentAgent (classificação), ValidationAgent (quantificação de incerteza), ExplainableAgent (extração de termos), ActionAgent (decisão tática), ResponseAgent (geração de resposta via LLM Gemini) e ManagerAgent (orquestração). As tecnologias utilizadas incluem Python, scikit-learn, NLTK, Streamlit e Google Generative AI.
 
 ## Guia de Instalação e Execução
 
