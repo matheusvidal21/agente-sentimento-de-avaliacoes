@@ -10,7 +10,7 @@ Especificação PEAS:
     Actuators: Emitir ação recomendada; Escalar para humano; Priorizar atendimento
     Sensors: Receber sentimento; Receber confiança; Observar contexto
 
-Fundamentação Teórica:
+Descrição:
     Este agente implementa um sistema de tomada de decisão baseado em regras
     que considera não apenas o sentimento detectado, mas também a confiabilidade
     dessa predição. Isso demonstra coordenação real entre agentes, onde a

@@ -10,7 +10,7 @@ Especificação PEAS:
     Actuators: Gerar resposta; Solicitar aprovação; Escalar caso complexo
     Sensors: Receber contexto; Detectar tópicos sensíveis; Observar tom
 
-Fundamentação Teórica:
+Descrição:
     Este agente implementa geração de linguagem natural (NLG) utilizando
     um modelo de linguagem grande (LLM). O agente demonstra autonomia ao
     decidir entre respostas automáticas ou fallback, e ao adaptar o tom

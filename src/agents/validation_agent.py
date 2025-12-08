@@ -10,7 +10,7 @@ Especificação PEAS:
     Actuators: Emitir status; Recomendar revisão; Ajustar thresholds
     Sensors: Receber probabilidades; Calcular entropia; Detectar anomalias
 
-Fundamentação Teórica:
+Descrição:
     Este agente implementa conceitos fundamentais de raciocínio probabilístico
     e quantificação da incerteza. A entropia de Shannon é usada como medida
     de incerteza: H(X) = -Σ p(x) * log₂(p(x))

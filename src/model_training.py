@@ -272,55 +272,6 @@ As matrizes de confusão acima mostram a comparação visual entre os dois model
 
 ---
 
-## Arquitetura do Sistema Multi-Agente
-
-### Agentes Especializados
-
-#### 1. SentimentAgent
-- **Função:** Classificação de sentimento (Positivo/Neutro/Negativo)
-- **Modelos:** Naive Bayes e Regressão Logística
-- **Features:** Explica contribuição de cada palavra para a predição
-
-#### 2. ValidationAgent
-- **Função:** Quantificação de incerteza e arbitragem entre modelos
-- **Propósito:** Validar predições e escolher o melhor modelo para cada caso
-
-#### 3. KeywordAgent
-- **Função:** Extração de palavras-chave via TF-IDF
-- **Propósito:** Identificar termos mais relevantes da avaliação
-
-#### 4. ActionAgent
-- **Função:** Definição de ações táticas baseadas em regras
-- **Propósito:** Recomendar próximos passos com base no contexto
-
-#### 5. ResponseAgent
-- **Função:** Geração de respostas automáticas via LLM (Gemini)
-- **Propósito:** Criar respostas empáticas e contextualizadas
-
-#### 6. ManagerAgent
-- **Função:** Orquestração de todos os agentes
-- **Propósito:** Coordenar o pipeline completo de análise
-
-### Pipeline de Execução
-
-```
-Texto do Cliente
-    ↓
-[SentimentAgent] → Classifica sentimento (NB + LR)
-    ↓
-[ValidationAgent] → Valida e escolhe melhor modelo
-    ↓
-[KeywordAgent] → Extrai termos-chave
-    ↓
-[ActionAgent] → Define ação tática
-    ↓
-[ResponseAgent] → Gera resposta personalizada
-    ↓
-Resultado Consolidado
-```
-
----
-
 ## Comparação de Modelos
 
 | Métrica | Naive Bayes | Regressão Logística | Melhor |

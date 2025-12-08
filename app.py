@@ -9,22 +9,14 @@ Referência: Russell, S. & Norvig, P. (2020). Artificial Intelligence: A Modern 
 
 import streamlit as st
 import time
+import unicodedata
 from src.agents import ManagerAgent
-
-# ============================================================================
-# CONFIGURAÇÃO DA PÁGINA
-# ============================================================================
 
 st.set_page_config(
     page_title="Sistema Multi-Agente | Análise de Sentimentos",
-    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# ============================================================================
-# ESTILOS CSS CUSTOMIZADOS
-# ============================================================================
 
 st.markdown("""
 <style>
@@ -427,11 +419,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================================
-# INICIALIZAÇÃO
-# ============================================================================
-
-# Versão do cache - incrementar para forçar recarregamento após alterações
 _CACHE_VERSION = 3
 
 @st.cache_resource
@@ -441,14 +428,10 @@ def load_manager(_version=_CACHE_VERSION):
 
 manager = load_manager()
 
-# ============================================================================
-# DADOS DOS AGENTES
-# ============================================================================
-
 AGENTS_INFO = {
     "SentimentAgent": {
-        "name": "Agente de Sentimento",
-        "role": "Classificação de polaridade textual via ML",
+        "name": "Classificador de Sentimento",
+        "role": "Analisa o texto e classifica como Positivo, Neutro ou Negativo",
         "color": "#dc2626",
         "peas": {
             "P": "Acurácia > 90%, F1-Score, Latência < 100ms",
@@ -458,8 +441,8 @@ AGENTS_INFO = {
         }
     },
     "ValidationAgent": {
-        "name": "Agente de Validação",
-        "role": "Arbitragem entre modelos e quantificação de incerteza",
+        "name": "Validador de Confiança",
+        "role": "Mede a certeza da predição e decide se precisa de revisão humana",
         "color": "#7c3aed",
         "peas": {
             "P": "Escolher melhor modelo, minimizar falsos positivos",
@@ -468,20 +451,20 @@ AGENTS_INFO = {
             "S": "Entropia, spread, confiança, concordância"
         }
     },
-    "KeywordAgent": {
-        "name": "Agente de Palavras-Chave",
-        "role": "Extração de termos relevantes via TF-IDF",
+    "ExplainabilityAgent": {
+        "name": "Explicador de Decisão",
+        "role": "Mostra quais palavras influenciaram a classificação (XAI)",
         "color": "#ea580c",
         "peas": {
-            "P": "Extrair termos discriminativos",
-            "E": "Matriz TF-IDF, vocabulário",
-            "A": "Emitir keywords, sinalizar OOV",
-            "S": "Scores TF-IDF, termos ausentes"
+            "P": "Identificar palavras influentes, explicar predição",
+            "E": "Modelo treinado (NB/LR), vetorizador TF-IDF",
+            "A": "Emitir palavras positivas/negativas, gerar explicação",
+            "S": "Coeficientes do modelo, log-probs, vocabulário"
         }
     },
     "ActionAgent": {
-        "name": "Agente de Ação",
-        "role": "Decisão tática baseada em regras",
+        "name": "Decisor de Ação",
+        "role": "Recomenda qual ação tomar com base na análise",
         "color": "#0891b2",
         "peas": {
             "P": "Maximizar satisfação, priorizar críticos",
@@ -491,8 +474,8 @@ AGENTS_INFO = {
         }
     },
     "ResponseAgent": {
-        "name": "Agente de Resposta",
-        "role": "Geração de texto via LLM (Gemini 2.0)",
+        "name": "Gerador de Resposta",
+        "role": "Cria uma resposta personalizada usando IA (Gemini)",
         "color": "#1a3a5c",
         "peas": {
             "P": "Empatia, adequação, tempo < 3s",
@@ -502,8 +485,8 @@ AGENTS_INFO = {
         }
     },
     "ManagerAgent": {
-        "name": "Agente Gerenciador",
-        "role": "Orquestração e coordenação do pipeline",
+        "name": "Coordenador Geral",
+        "role": "Orquestra todos os agentes e gerencia o fluxo",
         "color": "#4338ca",
         "peas": {
             "P": "Latência total, taxa de sucesso > 95%",
@@ -522,63 +505,57 @@ SAMPLE_REVIEWS = [
     "Chegou antes do prazo, muito bem embalado. Está funcionando perfeitamente!"
 ]
 
+def normalize_text(text: str) -> str:
+    """Remove acentos e converte para minúsculas para comparação."""
+    nfkd_form = unicodedata.normalize('NFKD', text)
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)]).lower()
+
 def render_heatmap(text: str, keyword_scores: dict, sentiment: str) -> str:
     """
-    Renderiza o texto como heatmap com cores baseadas na relevância das palavras.
+    Renderiza o texto como heatmap com cores baseadas na contribuição das palavras.
     
-    Args:
-        text: Texto original
-        keyword_scores: Dict com {palavra: score_tfidf}
-        sentiment: Sentimento predito (positivo/negativo/neutro)
-        
-    Returns:
-        HTML do heatmap
+    As cores refletem a direção da contribuição:
+    - Verde: palavras que puxam para POSITIVO (score > 0)
+    - Vermelho: palavras que puxam para NEGATIVO (score < 0)
+    
+    A intensidade da cor reflete a magnitude da contribuição.
     """
     if not keyword_scores:
         return f"<div class='heatmap-container'>{text}</div>"
     
-    # Normalizar scores para range 0-1
-    max_score = max(keyword_scores.values()) if keyword_scores else 1
-    min_score = min(keyword_scores.values()) if keyword_scores else 0
-    score_range = max_score - min_score if max_score != min_score else 1
+    max_abs_score = max(abs(s) for s in keyword_scores.values()) if keyword_scores else 1
+    color_positive = "#22c55e"
+    color_negative = "#ef4444"
     
-    # Definir cores baseadas no sentimento
-    if sentiment == "positivo":
-        color_high = "#22c55e"  # Verde
-    elif sentiment == "negativo":
-        color_high = "#ef4444"  # Vermelho
-    else:
-        color_high = "#3b82f6"  # Azul
-    
-    # Processar cada palavra
     words = text.split()
     html_words = []
     
     for word in words:
-        # Limpar palavra para comparação
-        clean_word = word.lower().strip(".,!?;:\"'()[]{}").strip()
+        clean_word = word.strip(".,!?;:\"'()[]{}").strip()
+        normalized_word = normalize_text(clean_word)
         
-        if clean_word in keyword_scores:
-            # Calcular intensidade (0 a 1)
-            score = keyword_scores[clean_word]
-            intensity = (score - min_score) / score_range
+        if normalized_word in keyword_scores:
+            score = keyword_scores[normalized_word]
             
-            # Interpolar opacidade
-            opacity = 0.3 + (intensity * 0.7)
+            if score > 0:
+                color = color_positive
+                direction = "positivo"
+            else:
+                color = color_negative
+                direction = "negativo"
+            
+            intensity = abs(score) / max_abs_score if max_abs_score > 0 else 0
+            opacity = 0.4 + (intensity * 0.6)
             
             html_words.append(
-                f"<span class='heatmap-word' style='background-color: {color_high}; "
+                f"<span class='heatmap-word' style='background-color: {color}; "
                 f"opacity: {opacity:.2f}; color: #fff; font-weight: 600;' "
-                f"title='Score TF-IDF: {score:.4f}'>{word}</span>"
+                f"title='Contribuição: {score:+.4f} (puxa para {direction})'>{word}</span>"
             )
         else:
             html_words.append(f"<span>{word}</span>")
     
     return f"<div class='heatmap-container'>{' '.join(html_words)}</div>"
-
-# ============================================================================
-# SIDEBAR - ARQUITETURA DOS AGENTES
-# ============================================================================
 
 with st.sidebar:
     st.markdown("""
@@ -592,7 +569,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # Ciclo do agente
     st.markdown("""
     <div style='background: #f8f9fa; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;'>
         <div style='font-size: 0.75rem; font-weight: 600; color: #6c757d; margin-bottom: 0.5rem;'>
@@ -608,7 +584,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # Cards dos agentes
     selected_agent = st.selectbox(
         "Selecionar agente para detalhes:",
         list(AGENTS_INFO.keys()),
@@ -645,7 +620,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # Estatísticas do sistema
     st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
     
     with st.expander("Estatísticas do Sistema", expanded=False):
@@ -671,11 +645,6 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
-# ============================================================================
-# CONTEÚDO PRINCIPAL
-# ============================================================================
-
-# Header
 st.markdown("""
 <div class='main-header'>
     <h1>Sistema Multi-Agente para Análise de Sentimentos</h1>
@@ -689,7 +658,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Seção de entrada
 st.markdown("<div class='section-title'>Entrada de Dados</div>", unsafe_allow_html=True)
 
 col_input, col_config = st.columns([3, 1])
@@ -724,7 +692,6 @@ with col_config:
     </div>
     """, unsafe_allow_html=True)
     
-    # Sempre usar ensemble
     model_key = "ensemble"
     
     st.markdown("<div style='height: 0.75rem;'></div>", unsafe_allow_html=True)
@@ -737,41 +704,31 @@ with col_config:
 
 st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
 
-# ============================================================================
-# PROCESSAMENTO E RESULTADOS
-# ============================================================================
-
 if analyze and input_text:
-    # Verificação de entrada
     if len(input_text.split()) < 2:
         st.error("O Agente de Sentimento recusou a requisição: texto muito curto (mínimo 2 palavras).")
         st.info("Esta é uma demonstração da autonomia dos agentes - eles podem recusar requisições inválidas.")
         st.stop()
     
-    # Progress indicator
     with st.spinner("Executando pipeline multi-agente..."):
         start_time = time.time()
         res = manager.process(input_text, model_key)
         total_time = time.time() - start_time
     
-    # Salvar resultado no session_state
     st.session_state.analysis_result = res
     st.session_state.total_time = total_time
-    st.session_state.agent_step = 0  # Resetar navegacao
+    st.session_state.agent_step = 0
     
-    # Verificar erro
     if "error" in res:
         st.error(f"Erro no processamento: {res.get('error')}")
         st.stop()
 
-# Mostrar resultados se existirem no session_state
 if "analysis_result" in st.session_state:
     res = st.session_state.analysis_result
     total_time = st.session_state.get("total_time", 0)
     
     st.markdown("<div class='section-title'>Resultados da Análise</div>", unsafe_allow_html=True)
     
-    # Métricas principais
     sent = res["sentiment_analysis"]["label"]
     probs = res["sentiment_analysis"]["probabilities"]
     validation = res.get("validation", {})
@@ -779,8 +736,7 @@ if "analysis_result" in st.session_state:
     color_map = {"Positivo": "#2a9d8f", "Negativo": "#e63946", "Neutro": "#6c757d"}
     sent_color = color_map.get(sent, "#6c757d")
     
-    # Verificar se é ensemble para mostrar modelo escolhido
-    is_ensemble = True  # Sempre ensemble agora
+    is_ensemble = True
     chosen_model_display = ""
     if "chosen_model" in res:
         model_names = {"nb": "Naive Bayes", "lr": "Reg. Logística"}
@@ -831,11 +787,9 @@ if "analysis_result" in st.session_state:
     
     st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
     
-    # Seção de Resultados - Layout em 2 colunas
     col_left, col_right = st.columns([1, 1])
     
     with col_left:
-        # Probabilidades e Keywords
         st.markdown("<div class='section-title'>Probabilidades</div>", unsafe_allow_html=True)
         for label, prob in sorted(probs.items(), key=lambda x: -x[1]):
             bar_color = color_map.get(label, "#6c757d")
@@ -852,32 +806,62 @@ if "analysis_result" in st.session_state:
         
         st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
         
-        # Palavras-chave
-        st.markdown("<div class='section-title'>Palavras-Chave</div>", unsafe_allow_html=True)
-        keywords = res.get("keywords", [])
-        if keywords:
-            keywords_html = " ".join([f"<span class='keyword-tag'>{kw}</span>" for kw in keywords[:6]])
-            st.markdown(f"<div>{keywords_html}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<p style='color: #6c757d; font-size: 0.85rem;'>Nenhuma identificada.</p>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>Por que essa classificação?</div>", unsafe_allow_html=True)
+        explainability = res.get("explainability", {})
         
-        # Heatmap compacto
-        keyword_scores = res.get("keyword_scores", {})
-        if keyword_scores:
-            st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
-            st.markdown("<div class='section-title'>Mapa de Relevância</div>", unsafe_allow_html=True)
-            heatmap_html = render_heatmap(input_text, keyword_scores, sent.lower())
-            st.markdown(heatmap_html, unsafe_allow_html=True)
+        if explainability:
+            palavra_mais_influente = explainability.get("palavra_mais_influente")
+            if palavra_mais_influente:
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; border-left: 4px solid #ea580c;'>
+                    <div style='font-size: 0.75rem; color: #9a3412; font-weight: 500; margin-bottom: 0.25rem;'>PALAVRA MAIS INFLUENTE</div>
+                    <div style='font-size: 1.3rem; font-weight: 700; color: #c2410c;'>"{palavra_mais_influente}"</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            palavras_positivas = explainability.get("palavras_positivas", [])
+            if palavras_positivas:
+                pos_html = " ".join([
+                    f"<span style='display: inline-block; background: #dcfce7; color: #166534; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; margin: 0.15rem; border: 1px solid #bbf7d0;'>{word} <span style='color: #15803d; font-size: 0.7rem;'>+{score:.2f}</span></span>" 
+                    for word, score in palavras_positivas[:5]
+                ])
+                st.markdown(f"""
+                <div style='margin-bottom: 0.75rem;'>
+                    <div style='font-size: 0.75rem; color: #166534; font-weight: 500; margin-bottom: 0.4rem;'>Puxam para POSITIVO:</div>
+                    <div>{pos_html}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            palavras_negativas = explainability.get("palavras_negativas", [])
+            if palavras_negativas:
+                neg_html = " ".join([
+                    f"<span style='display: inline-block; background: #fee2e2; color: #991b1b; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; margin: 0.15rem; border: 1px solid #fecaca;'>{word} <span style='color: #b91c1c; font-size: 0.7rem;'>{score:.2f}</span></span>" 
+                    for word, score in palavras_negativas[:5]
+                ])
+                st.markdown(f"""
+                <div style='margin-bottom: 0.75rem;'>
+                    <div style='font-size: 0.75rem; color: #991b1b; font-weight: 500; margin-bottom: 0.4rem;'>Puxam para NEGATIVO:</div>
+                    <div>{neg_html}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            explicacao = explainability.get("explicacao", "")
+            if explicacao:
+                st.markdown(f"""
+                <div style='background: #f8fafc; border-radius: 8px; padding: 0.75rem; font-size: 0.8rem; color: #475569; font-style: italic; border: 1px solid #e2e8f0;'>
+                    {explicacao}
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown("<p style='color: #6c757d; font-size: 0.85rem;'>Nenhuma explicação disponível.</p>", unsafe_allow_html=True)
     
     with col_right:
-        # Agente de Validação (fusão de Agente Validador + Métricas de Validação)
-        st.markdown("<div class='section-title'>Agente de Validação</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>Validador de Confiança</div>", unsafe_allow_html=True)
         
         entropia = validation.get("entropia", 0)
         entropia_norm = validation.get("entropia_normalizada", 0)
         confianca = validation.get("confianca", 0)
         
-        # Seção de comparação de modelos (se disponível)
         if "ensemble_comparison" in res:
             comparison = res["ensemble_comparison"]
             nb_comp = comparison["comparison"]["nb"]
@@ -900,7 +884,6 @@ if "analysis_result" in st.session_state:
             </div>
             """, unsafe_allow_html=True)
         
-        # Métricas de Incerteza
         st.markdown(f"""
         <div style='background: #f8f9fa; border-radius: 10px; padding: 1rem;'>
             <div style='font-size: 0.75rem; color: #6c757d; margin-bottom: 0.5rem; font-weight: 600;'>Métricas de Incerteza</div>
@@ -918,11 +901,31 @@ if "analysis_result" in st.session_state:
             </div>
         </div>
         """, unsafe_allow_html=True)
+        
+        keyword_scores = res.get("keyword_scores", {})
+        if keyword_scores:
+            st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+            st.markdown("<div class='section-title'>Mapa de Influência</div>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='display: flex; gap: 1.5rem; margin-bottom: 0.75rem; font-size: 0.75rem;'>
+                <div style='display: flex; align-items: center; gap: 0.4rem;'>
+                    <span style='width: 14px; height: 14px; background: #22c55e; border-radius: 3px; display: inline-block;'></span>
+                    <span style='color: #6c757d;'>Puxa para Positivo</span>
+                </div>
+                <div style='display: flex; align-items: center; gap: 0.4rem;'>
+                    <span style='width: 14px; height: 14px; background: #ef4444; border-radius: 3px; display: inline-block;'></span>
+                    <span style='color: #6c757d;'>Puxa para Negativo</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            heatmap_html = render_heatmap(input_text, keyword_scores, sent.lower())
+            st.markdown(heatmap_html, unsafe_allow_html=True)
     
     st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
     
-    # Seção de resposta
-    st.markdown("<div class='section-title'>Ação Recomendada e Resposta Gerada</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Decisão e Resposta</div>", unsafe_allow_html=True)
     
     col_action, col_response = st.columns([1, 2])
     
@@ -933,9 +936,9 @@ if "analysis_result" in st.session_state:
         st.markdown(f"""
         <div class='response-box'>
             <div style='font-size: 0.8rem; font-weight: 600; color: #6c757d; text-transform: uppercase; 
-                        letter-spacing: 0.5px; margin-bottom: 0.75rem;'>Ação do Sistema</div>
+                        letter-spacing: 0.5px; margin-bottom: 0.75rem;'>Decisor de Ação</div>
             <div style='font-size: 0.95rem; color: #343a40; line-height: 1.6;'>{action}</div>
-            {"<div style='margin-top: 1rem; padding: 0.75rem; background: #fff3cd; border-radius: 8px; font-size: 0.85rem; color: #856404;'>Requer revisao humana</div>" if requires_review else ""}
+            {"<div style='margin-top: 1rem; padding: 0.75rem; background: #fff3cd; border-radius: 8px; font-size: 0.85rem; color: #856404;'>Requer revisão humana</div>" if requires_review else ""}
         </div>
         """, unsafe_allow_html=True)
     
@@ -944,7 +947,7 @@ if "analysis_result" in st.session_state:
         
         st.markdown("""
         <div style='font-size: 0.8rem; font-weight: 600; color: #6c757d; text-transform: uppercase; 
-                    letter-spacing: 0.5px; margin-bottom: 0.75rem;'>Resposta Automática (Gemini 2.0 Flash)</div>
+                    letter-spacing: 0.5px; margin-bottom: 0.75rem;'>Gerador de Resposta (Gemini 2.0)</div>
         """, unsafe_allow_html=True)
         
         st.text_area(
@@ -957,24 +960,17 @@ if "analysis_result" in st.session_state:
     
     st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
     
-    # ============================================================================
-    # SECAO DE EXECUCAO DOS AGENTES (PEAS) - NAVEGACAO
-    # ============================================================================
-    
-    st.markdown("<div class='section-title'>Pipeline Multi-Agente</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Fluxo de Execução dos Agentes</div>", unsafe_allow_html=True)
     
     if "execution_trace" in res and len(res["execution_trace"]) > 0:
         trace = res["execution_trace"]
         total_agents = len(trace)
         
-        # Sempre atualizar o trace com os dados mais recentes
         st.session_state.current_trace = trace
         
-        # Estado para navegacao
         if "agent_step" not in st.session_state:
             st.session_state.agent_step = 0
         
-        # Garantir que o indice esteja dentro dos limites
         if st.session_state.agent_step >= total_agents:
             st.session_state.agent_step = 0
         
@@ -986,10 +982,8 @@ if "analysis_result" in st.session_state:
         summary = step.get("summary", "")
         details = step.get("details", "")
         
-        # Normalizar nome do agente (remover sufixos como "(Árbitro)")
         agent_name_normalized = agent_name.split("(")[0].strip()
         
-        # Mapear para PEAS e cor
         agent_key = None
         for key, info in AGENTS_INFO.items():
             if info["name"] == agent_name_normalized or info["name"] in agent_name:
@@ -999,10 +993,8 @@ if "analysis_result" in st.session_state:
         peas = agent_info.get("peas", {})
         color = agent_info.get("color", "#6c757d")
         
-        # Usar nome normalizado para exibição
         display_name = agent_info.get("name", agent_name_normalized) if agent_info else agent_name_normalized
         
-        # Determinar comunicacao
         if current_idx == 0:
             received_from = "Usuario"
             received_data = "Texto da avaliacao"
@@ -1016,9 +1008,7 @@ if "analysis_result" in st.session_state:
         else:
             sends_to = "Resultado Final"
         
-        # Card do agente usando container nativo
         with st.container():
-            # Header
             header_col1, header_col2 = st.columns([3, 1])
             with header_col1:
                 st.markdown(f"### {display_name}")
@@ -1026,10 +1016,8 @@ if "analysis_result" in st.session_state:
             with header_col2:
                 st.metric("Tempo", f"{exec_time:.1f} ms")
             
-            # Resultado
             st.info(f"**Resultado:** {summary}")
             
-            # Ciclo PEAS
             st.markdown("**Ciclo PEAS:**")
             peas_col1, peas_col2, peas_col3 = st.columns(3)
             
@@ -1059,7 +1047,6 @@ if "analysis_result" in st.session_state:
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # Fluxo de comunicacao
             comm_col1, comm_col2, comm_col3 = st.columns([2, 1, 2])
             with comm_col1:
                 st.markdown("**Entrada:**")
@@ -1070,7 +1057,6 @@ if "analysis_result" in st.session_state:
                 st.markdown("**Saida:**")
                 st.caption(summary[:60] + ("..." if len(summary) > 60 else ""))
         
-        # Detalhes tecnicos em expander
         with st.expander("Ver detalhes tecnicos"):
             if details:
                 st.code(details, language=None)
@@ -1084,14 +1070,11 @@ if "analysis_result" in st.session_state:
                     st.markdown(f"**Actuators:** {peas.get('A', 'N/A')}")
                     st.markdown(f"**Sensors:** {peas.get('S', 'N/A')}")
         
-        # Fluxo completo - normalizar nomes removendo sufixos como "(Árbitro)"
         agents_names = [t.get("agent", "").split("(")[0].strip().replace("Agente de ", "").replace("Agentes de ", "") for t in trace]
         st.caption(f"Fluxo completo: {' → '.join(agents_names)}")
         
-        # Navegacao no rodape
         st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
         
-        # Indicador de progresso com pontos
         progress_dots = ""
         for i in range(total_agents):
             if i == current_idx:
@@ -1112,7 +1095,7 @@ if "analysis_result" in st.session_state:
                     st.rerun()
         
         with nav_col2:
-            pass  # Espaco vazio no centro
+            pass
         
         with nav_col3:
             if current_idx < total_agents - 1:

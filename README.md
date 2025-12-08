@@ -1,8 +1,8 @@
 # Sistema Multi-Agente para Análise de Sentimentos
 
-**Disciplina:** Introdução à Inteligência Artificial  
-**Semestre:** 2025.2  
-**Professor:** Andre Luis Fonseca Faustino  
+**Disciplina:** Introdução à Inteligência Artificial
+**Semestre:** 2025.2
+**Professor:** Andre Luis Fonseca Faustino
 **Turma:** T03
 
 ## Integrantes do Grupo
@@ -86,7 +86,7 @@ agente-sentimento-de-avaliacoes/
 │       ├── manager_agent.py       # Orquestrador central
 │       ├── sentiment_agent.py     # Classificação de sentimento
 │       ├── validation_agent.py    # Quantificação de incerteza
-│       ├── keyword_agent.py       # Extração de palavras-chave
+│       ├── explainable_agent.py   # Extração de palavras determinantes para decisão
 │       ├── action_agent.py        # Decisão tática
 │       └── response_agent.py      # Geração de resposta via LLM
 └── docs/                           # Documentação e relatórios

@@ -4,7 +4,7 @@ Sistema Multi-Agente para Análise de Sentimentos.
 Este pacote implementa uma arquitetura de agentes inteligentes especializados
 que trabalham de forma coordenada para análise completa de avaliações de produtos.
 
-Fundamentação Teórica:
+Descrição:
     A arquitetura segue o framework PEAS (Performance, Environment, Actuators, Sensors)
     conforme definido em Russell & Norvig (2020). Cada agente é uma entidade autônoma
     que percebe seu ambiente e age de forma orientada a objetivos.
@@ -13,7 +13,7 @@ Arquitetura de Agentes:
     - BaseAgent: Classe base abstrata com interface PEAS e ciclo perceive→decide→act
     - SentimentAgent: Classificação de sentimento (NB/LR) com detecção de OOV
     - ValidationAgent: Quantificação de incerteza com auto-calibração
-    - KeywordAgent: Extração de palavras-chave (TF-IDF) adaptativa
+    - ExplainabilityAgent: Explicabilidade de predições ML (XAI) usando pesos reais do modelo
     - ActionAgent: Tomada de decisão baseada em regras de negócio
     - ResponseAgent: Geração de respostas (LLM) com fallback inteligente
     - ManagerAgent: Orquestração do pipeline multi-agente
@@ -37,7 +37,7 @@ from .base_agent import (
 )
 from .sentiment_agent import SentimentAgent
 from .validation_agent import ValidationAgent
-from .keyword_agent import KeywordAgent
+from .explainability_agent import ExplainabilityAgent
 from .action_agent import ActionAgent
 from .response_agent import ResponseAgent
 from .manager_agent import ManagerAgent
@@ -53,7 +53,7 @@ __all__ = [
     # Agentes especializados
     'SentimentAgent',
     'ValidationAgent',
-    'KeywordAgent',
+    'ExplainabilityAgent',
     'ActionAgent',
     'ResponseAgent',
     'ManagerAgent',

@@ -10,7 +10,7 @@ Especificação PEAS:
     Actuators: Classificar sentimento; Emitir probabilidades; Solicitar validação
     Sensors: Receber texto; Observar confiança; Detectar OOV
 
-Fundamentação Teórica:
+Descrição:
     Este agente implementa classificação supervisionada para análise de
     sentimento, utilizando representação TF-IDF do texto. O agente demonstra
     autonomia ao poder recusar classificar textos inadequados e ao solicitar

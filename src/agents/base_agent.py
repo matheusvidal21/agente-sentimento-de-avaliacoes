@@ -5,7 +5,7 @@ Este módulo define a interface padrão para todos os agentes do sistema,
 implementando o framework PEAS (Performance, Environment, Actuators, Sensors)
 conforme definido em Russell & Norvig (2020).
 
-Fundamentação Teórica:
+Descrição:
     Um agente é qualquer coisa que pode ser vista como percebendo seu ambiente
     através de sensores e agindo nesse ambiente através de atuadores, de forma
     autônoma e orientada a objetivos.

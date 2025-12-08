@@ -34,7 +34,7 @@ from .base_agent import BaseAgent, PEAS, AgentPercept, Performative, AgentMessag
 from ..model_persistence import NB_MODEL_PATH, LR_MODEL_PATH, VECTORIZER_PATH
 from .sentiment_agent import SentimentAgent
 from .validation_agent import ValidationAgent
-from .keyword_agent import KeywordAgent
+from .explainability_agent import ExplainabilityAgent
 from .action_agent import ActionAgent
 from .response_agent import ResponseAgent
 
@@ -54,7 +54,7 @@ class ManagerAgent(BaseAgent):
     Attributes:
         sentiment_agents: Dicionário com agentes de sentimento (nb, lr)
         validation_agent: Agente de validação
-        keyword_agent: Agente de extração de keywords
+        explainability_agent: Agente de explicabilidade de predições
         action_agent: Agente de decisão
         response_agent: Agente de geração de resposta
     """
@@ -127,7 +127,11 @@ class ManagerAgent(BaseAgent):
             "lr": SentimentAgent(self.lr_model, self.vectorizer, name="SentimentAgent_LR")
         }
         self.validation_agent = ValidationAgent()
-        self.keyword_agent = KeywordAgent(self.vectorizer)
+        # ExplainabilityAgent para cada modelo (NB e LR têm pesos diferentes)
+        self.explainability_agents = {
+            "nb": ExplainabilityAgent(self.nb_model, self.vectorizer, name="ExplainabilityAgent_NB"),
+            "lr": ExplainabilityAgent(self.lr_model, self.vectorizer, name="ExplainabilityAgent_LR")
+        }
         self.action_agent = ActionAgent()
         self.response_agent = ResponseAgent()
         
@@ -292,20 +296,38 @@ class ManagerAgent(BaseAgent):
             "execution_time_ms": round(execution_time, 2)
         })
         
-        # 3. Extração de Palavras-Chave
+        # 3. Explicabilidade da Predição (XAI)
         start_time = time.time()
-        keyword_scores = self.keyword_agent.extract_keywords_with_scores(text)
-        keywords = list(keyword_scores.keys())
+        explainability_agent = self.explainability_agents[model_type]
+        explainability_result = explainability_agent.explain_prediction(
+            text, 
+            sentiment_result['label']
+        )
         execution_time = (time.time() - start_time) * 1000
         
-        # Processar mensagens do KeywordAgent
-        self._process_agent_messages(self.keyword_agent)
+        # Extrair keywords das palavras mais influentes para compatibilidade
+        keywords = []
+        keyword_scores = {}
+        for word, score in explainability_result.get("palavras_positivas", []):
+            keywords.append(word)
+            keyword_scores[word] = score
+        for word, score in explainability_result.get("palavras_negativas", []):
+            keywords.append(word)
+            keyword_scores[word] = score
+        
+        # Processar mensagens do ExplainabilityAgent
+        self._process_agent_messages(explainability_agent)
         
         execution_trace.append({
-            "agent": "Agente de Palavras-Chave",
-            "icon": "search",
-            "summary": "Extração de Tópicos",
-            "details": f"TF-IDF identificou termos mais relevantes.\nTop termos: {', '.join(keywords)}",
+            "agent": "Agente de Explicabilidade",
+            "icon": "lightbulb",
+            "summary": "Análise XAI",
+            "details": (
+                f"EXPLICAÇÃO DA PREDIÇÃO:\n"
+                f"{explainability_result.get('explicacao', '')}\n\n"
+                f"Palavras positivas: {', '.join([w for w, _ in explainability_result.get('palavras_positivas', [])])}\n"
+                f"Palavras negativas: {', '.join([w for w, _ in explainability_result.get('palavras_negativas', [])])}"
+            ),
             "execution_time_ms": round(execution_time, 2)
         })
         
@@ -374,6 +396,7 @@ class ManagerAgent(BaseAgent):
             "validation": validation_result,
             "keywords": keywords,
             "keyword_scores": keyword_scores,
+            "explainability": explainability_result,
             "explanation": explanation,
             "suggested_action": action,
             "generated_reply": generated_reply,
@@ -492,19 +515,37 @@ class ManagerAgent(BaseAgent):
             "execution_time_ms": round(validation_execution_time, 2)
         })
         
-        # 3. Extração de Palavras-Chave
+        # 3. Explicabilidade da Predição (XAI)
         start_time = time.time()
-        keyword_scores = self.keyword_agent.extract_keywords_with_scores(text)
-        keywords = list(keyword_scores.keys())
+        explainability_agent = self.explainability_agents[chosen_model]
+        explainability_result = explainability_agent.explain_prediction(
+            text, 
+            sentiment_result['label']
+        )
         execution_time = (time.time() - start_time) * 1000
         
-        self._process_agent_messages(self.keyword_agent)
+        # Extrair keywords das palavras mais influentes para compatibilidade
+        keywords = []
+        keyword_scores = {}
+        for word, score in explainability_result.get("palavras_positivas", []):
+            keywords.append(word)
+            keyword_scores[word] = score
+        for word, score in explainability_result.get("palavras_negativas", []):
+            keywords.append(word)
+            keyword_scores[word] = score
+        
+        self._process_agent_messages(explainability_agent)
         
         execution_trace.append({
-            "agent": "Agente de Palavras-Chave",
-            "icon": "search",
-            "summary": "Extração de Tópicos",
-            "details": f"TF-IDF identificou termos mais relevantes.\nTop termos: {', '.join(keywords)}",
+            "agent": "Agente de Explicabilidade",
+            "icon": "lightbulb",
+            "summary": "Análise XAI",
+            "details": (
+                f"EXPLICAÇÃO DA PREDIÇÃO:\n"
+                f"{explainability_result.get('explicacao', '')}\n\n"
+                f"Palavras positivas: {', '.join([w for w, _ in explainability_result.get('palavras_positivas', [])])}\n"
+                f"Palavras negativas: {', '.join([w for w, _ in explainability_result.get('palavras_negativas', [])])}"
+            ),
             "execution_time_ms": round(execution_time, 2)
         })
         
@@ -573,6 +614,7 @@ class ManagerAgent(BaseAgent):
             "validation": validation_result,
             "keywords": keywords,
             "keyword_scores": keyword_scores,
+            "explainability": explainability_result,
             "explanation": explanation,
             "suggested_action": action,
             "generated_reply": generated_reply,
@@ -719,7 +761,8 @@ class ManagerAgent(BaseAgent):
             stats["agents"][f"sentiment_{name}"] = agent.get_agent_stats()
         
         stats["agents"]["validation"] = self.validation_agent.get_statistics()
-        stats["agents"]["keyword"] = self.keyword_agent.get_agent_stats()
+        for name, agent in self.explainability_agents.items():
+            stats["agents"][f"explainability_{name}"] = agent.get_agent_stats()
         stats["agents"]["action"] = self.action_agent.get_agent_stats()
         stats["agents"]["response"] = self.response_agent.get_agent_stats()
         
@@ -740,7 +783,8 @@ class ManagerAgent(BaseAgent):
             peas_specs[f"sentiment_{name}"] = agent.peas.to_dict()
         
         peas_specs["validation"] = self.validation_agent.peas.to_dict()
-        peas_specs["keyword"] = self.keyword_agent.peas.to_dict()
+        for name, agent in self.explainability_agents.items():
+            peas_specs[f"explainability_{name}"] = agent.peas.to_dict()
         peas_specs["action"] = self.action_agent.peas.to_dict()
         peas_specs["response"] = self.response_agent.peas.to_dict()
         
