@@ -368,13 +368,13 @@ class ValidationAgent(BaseAgent):
         text_length = self.beliefs.get("text_length", 0)
         
         lines = [
-            "📊 **Métricas de Confiabilidade:**",
+            "**Métricas de Confiabilidade:**",
             f"• Confiança: **{confidence:.1%}** (prob. da classe predita)",
             f"• Entropia: **{entropy_val:.3f}** bits ({normalized_entropy:.1%} da máxima)",
             f"• Spread: **{prob_spread:.3f}** (discriminabilidade)",
             f"• Tamanho: **{text_length}** palavras",
             "",
-            "🎯 **Distribuição de Probabilidades:**"
+            "**Distribuição de Probabilidades:**"
         ]
         
         sorted_probs = sorted(probabilities.items(), key=lambda x: x[1], reverse=True)

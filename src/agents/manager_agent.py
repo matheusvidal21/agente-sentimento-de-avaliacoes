@@ -10,13 +10,17 @@ Especificação PEAS:
     Actuators: Orquestrar pipeline; Paralelizar; Replanejar se necessário
     Sensors: Monitorar execução; Receber status; Detectar falhas
 
-Arquitetura Multi-Agente:
+Arquitetura Multi-Agente (Ensemble):
     O ManagerAgent implementa o padrão de orquestração centralizada,
-    coordenando a execução dos agentes especializados:
+    coordenando a execução dos agentes especializados usando SEMPRE
+    o modo ensemble: ambos os modelos (Naive Bayes e Regressão Logística)
+    são executados e o ValidationAgent decide qual resultado é mais confiável.
     
-    Sentimento → Validação → Keywords → Ação → Resposta
+    Pipeline:
+    [NB + LR] → Validação (escolhe melhor) → Explicabilidade → Ação → Resposta
     
     Características de coordenação real:
+    - Ensemble: usa ambos os modelos e ValidationAgent arbitra
     - Replanning: se ValidationAgent indica baixa confiança, adapta fluxo
     - Comunicação: processa mensagens entre agentes
     - Monitoramento: rastreia performance de cada agente
@@ -43,18 +47,22 @@ class ManagerAgent(BaseAgent):
     """
     Agente coordenador do sistema multi-agente.
     
-    Gerencia a carga de modelos e orquestra o pipeline completo:
-    Sentimento → Validação → Keywords → Ação → Resposta
+    Gerencia a carga de modelos e orquestra o pipeline completo usando
+    o modo ENSEMBLE: ambos os modelos (Naive Bayes e Regressão Logística)
+    são executados e o ValidationAgent decide qual resultado é mais confiável.
+    
+    Pipeline: [NB + LR] → Validação → Explicabilidade → Ação → Resposta
     
     Comportamento autônomo:
+    - Ensemble: executa ambos os modelos e ValidationAgent arbitra
     - Replanejamento quando ValidationAgent indica problemas
     - Processamento de mensagens entre agentes
     - Coleta de estatísticas agregadas do sistema
     
     Attributes:
         sentiment_agents: Dicionário com agentes de sentimento (nb, lr)
-        validation_agent: Agente de validação
-        explainability_agent: Agente de explicabilidade de predições
+        validation_agent: Agente de validação (também arbitra entre modelos)
+        explainability_agents: Agentes de explicabilidade (um por modelo)
         action_agent: Agente de decisão
         response_agent: Agente de geração de resposta
     """
@@ -162,7 +170,6 @@ class ManagerAgent(BaseAgent):
         data = percept.data
         
         self.beliefs["current_text"] = data.get("text", "")
-        self.beliefs["current_model_type"] = data.get("model_type", "lr")
         self.beliefs["request_timestamp"] = time.time()
     
     def can_handle(self, request: Dict[str, Any]) -> tuple[bool, str]:
@@ -176,15 +183,9 @@ class ManagerAgent(BaseAgent):
             Tupla (pode_processar, motivo)
         """
         text = request.get("text", "")
-        model_type = request.get("model_type", "lr")
         
         if not text or not text.strip():
             return False, "Texto vazio"
-        
-        # Aceitar também o tipo "ensemble" para usar ambos os modelos
-        valid_types = list(self.sentiment_agents.keys()) + ["ensemble"]
-        if model_type not in valid_types:
-            return False, f"Tipo de modelo '{model_type}' desconhecido. Use 'nb', 'lr' ou 'ensemble'."
         
         if not self.beliefs.get("agents_initialized", False):
             return False, "Agentes não inicializados"
@@ -203,7 +204,10 @@ class ManagerAgent(BaseAgent):
     
     def act(self, action: str) -> Dict[str, Any]:
         """
-        Executa o pipeline completo.
+        Executa o pipeline completo usando ambos os modelos (ensemble).
+        
+        O ValidationAgent compara as predições de Naive Bayes e Regressão
+        Logística e escolhe o resultado mais confiável.
         
         Args:
             action: Ação a executar
@@ -215,13 +219,10 @@ class ManagerAgent(BaseAgent):
             return {"error": f"Ação desconhecida: {action}"}
         
         text = self.beliefs.get("current_text", "")
-        model_type = self.beliefs.get("current_model_type", "lr")
         
-        # Se for ensemble, usar o pipeline especial
-        if model_type == "ensemble":
-            return self._execute_ensemble_pipeline(text)
-        
-        return self._execute_pipeline(text, model_type)
+        # Sempre usa ensemble: ambos os modelos são executados e
+        # o ValidationAgent decide qual resultado é mais confiável
+        return self._execute_ensemble_pipeline(text)
     
     def _execute_pipeline(self, text: str, model_type: str) -> Dict[str, Any]:
         """
@@ -700,25 +701,23 @@ class ManagerAgent(BaseAgent):
             if message.content.get("requires_human_review", False):
                 self.beliefs["replanning_count"] = self.beliefs.get("replanning_count", 0) + 1
 
-    def process(self, text: str, model_type: str = "lr") -> Dict[str, Any]:
+    def process(self, text: str, model_type: str = "ensemble") -> Dict[str, Any]:
         """
         Interface de alto nível para processamento.
         
-        Executa o ciclo completo do agente: perceive → decide → act.
-        Mantém compatibilidade com a API anterior.
+        Executa o ciclo completo do agente usando o modo ensemble:
+        ambos os modelos (NB e LR) são executados e o ValidationAgent
+        escolhe o resultado mais confiável.
         
         Args:
             text: Texto da avaliação a ser analisada
-            model_type: Tipo de modelo de sentimento ("nb" ou "lr")
+            model_type: Parâmetro mantido para compatibilidade (ignorado, sempre usa ensemble)
             
         Returns:
             Dicionário com resultados consolidados
         """
         # Verificar se pode processar
-        can_process, reason = self.can_handle({
-            "text": text,
-            "model_type": model_type
-        })
+        can_process, reason = self.can_handle({"text": text})
         
         if not can_process:
             return {"error": reason}
@@ -726,10 +725,7 @@ class ManagerAgent(BaseAgent):
         # Executar ciclo do agente
         percept = AgentPercept(
             source="environment",
-            data={
-                "text": text,
-                "model_type": model_type
-            }
+            data={"text": text}
         )
         
         return self.run_cycle(percept)
