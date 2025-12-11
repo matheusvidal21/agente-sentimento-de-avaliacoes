@@ -419,14 +419,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-_CACHE_VERSION = 3
+# Inicializa o agente gerenciador do sistema
+if 'manager' not in st.session_state:
+    st.session_state.manager = ManagerAgent()
 
-@st.cache_resource
-def load_manager(_version=_CACHE_VERSION):
-    """Inicializa o agente gerenciador do sistema."""
-    return ManagerAgent()
-
-manager = load_manager()
+manager = st.session_state.manager
 
 AGENTS_INFO = {
     "SentimentAgent": {

@@ -22,10 +22,11 @@ Descrição:
 
 import os
 from typing import Optional, Dict, Any, Tuple
-from .base_agent import BaseAgent, PEAS, AgentPercept, Performative
+from src.agents.base_agent import BaseAgent, PEAS, AgentPercept, Performative
 
 try:
     import google.generativeai as genai
+    from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
     from dotenv import load_dotenv
     GENAI_AVAILABLE = True
 except ImportError:
@@ -81,7 +82,7 @@ class ResponseAgent(BaseAgent):
             name: Identificador do agente
         """
         super().__init__(name)
-        self.model = None
+        self.model: Optional[Any] = None
         self._initialize_llm()
         
         # Objetivos do agente
@@ -105,22 +106,22 @@ class ResponseAgent(BaseAgent):
             try:
                 genai.configure(api_key=api_key)
                 
-                generation_config = {
-                    "temperature": 0.7,
-                    "top_p": 0.95,
-                    "top_k": 40,
-                    "max_output_tokens": 300,
+                generation_config = GenerationConfig(
+                    temperature=0.7,
+                    top_p=0.95,
+                    top_k=40,
+                    max_output_tokens=1000,
+                )
+                
+                safety_settings = {
+                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
                 }
                 
-                safety_settings = [
-                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-                ]
-                
                 self.model = genai.GenerativeModel(
-                    model_name="gemini-2.0-flash",
+                    model_name="gemini-2.5-flash",
                     generation_config=generation_config,
                     safety_settings=safety_settings
                 )
@@ -201,10 +202,8 @@ class ResponseAgent(BaseAgent):
         self.beliefs["requires_human_review"] = requer_revisao
         
         # Determinar estratégia de resposta
-        self.beliefs["use_llm"] = (
-            self.beliefs.get("llm_available", False) and 
-            not requer_revisao
-        )
+        llm_available = self.beliefs.get("llm_available", False)
+        self.beliefs["use_llm"] = llm_available and not requer_revisao
         
         # Detectar casos sensíveis (exemplo simples)
         sensitive_keywords = ["reembolso", "advogado", "procon", "processo", "fraude"]
@@ -296,14 +295,14 @@ class ResponseAgent(BaseAgent):
             }
         
         if action == "generate_llm":
-            response = self._generate_llm_response()
-            if response:
+            llm_response = self._generate_llm_response()
+            if llm_response:
                 self.beliefs["llm_responses"] = self.beliefs.get("llm_responses", 0) + 1
-                self._update_average_length(len(response))
+                self._update_average_length(len(llm_response))
                 return {
                     "success": True,
                     "action": action,
-                    "response": response,
+                    "response": llm_response,
                     "source": "llm",
                     "requires_approval": False
                 }
@@ -353,23 +352,23 @@ class ResponseAgent(BaseAgent):
             confidence_instruction = "- A confiança é moderada. Seja um pouco mais cauteloso na resposta."
         
         prompt = f"""Você é um atendente de e-commerce profissional e amigável.
-Responda à avaliação do cliente de forma empática e calorosa.
+                Responda à avaliação do cliente de forma empática e calorosa.
 
-Avaliação: "{text}"
-Sentimento detectado: {sentiment}
-Confiança da análise: {confianca:.0%}
-Status de validação: {status}
-Ação sugerida: {action}
+                Avaliação: "{text}"
+                Sentimento detectado: {sentiment}
+                Confiança da análise: {confianca:.0%}
+                Status de validação: {status}
+                Ação sugerida: {action}
 
-Requisitos:
-- Tom empático, caloroso e profissional
-- Use emojis apropriados para deixar a resposta mais amigável
-- Se negativo: peça desculpas sinceramente, mostre empatia e ofereça solução clara
-- Se positivo: agradeça com entusiasmo e reforce o relacionamento
-- Se neutro: agradeça o feedback e mostre abertura para melhorias
-{confidence_instruction}
+                Requisitos:
+                - Tom empático, caloroso e profissional
+                - Use emojis apropriados para deixar a resposta mais amigável
+                - Se negativo: peça desculpas sinceramente, mostre empatia e ofereça solução clara
+                - Se positivo: agradeça com entusiasmo e reforce o relacionamento
+                - Se neutro: agradeça o feedback e mostre abertura para melhorias
+                {confidence_instruction}
 
-Resposta:"""
+                Resposta:"""
         
         try:
             response = self.model.generate_content([prompt])
